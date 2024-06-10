@@ -1,9 +1,9 @@
-package pl.greywarden.tutorial.domain.entity;
+package pl.greywarden.tutorial.domain.dto;
 
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.serde.annotation.Serdeable;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 @Introspected
@@ -12,8 +12,8 @@ public record Task(
         String id,
         String title,
         String description,
-        List<String> tags,
+        List<Tag> tags,
         String list,
-        Date dueDate,
+        LocalDate dueDate,
         boolean finished) {
 }

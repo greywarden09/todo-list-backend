@@ -1,53 +1,120 @@
 package pl.greywarden.tutorial.domain.dao;
 
+import io.micronaut.core.util.CollectionUtils;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.jooq.DSLContext;
+import org.jooq.Record1;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
 import pl.greywarden.tutorial.domain.dto.CreateTaskRequest;
-import pl.greywarden.tutorial.domain.entity.Task;
+import pl.greywarden.tutorial.domain.dto.Tag;
+import pl.greywarden.tutorial.domain.dto.Task;
+import pl.greywarden.tutorial.service.DatabaseConnectionProvider;
+import pl.greywarden.tutorial.service.HashIdGenerator;
 
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.ZoneId;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
+
+import static pl.greywarden.tutorial.jooq.Tables.TAGS;
+import static pl.greywarden.tutorial.jooq.Tables.TASKS;
+import static pl.greywarden.tutorial.jooq.Tables.TASKS_LISTS;
+import static pl.greywarden.tutorial.jooq.Tables.TASKS_TAGS;
+import static pl.greywarden.tutorial.jooq.Tables.TASKS_VIEW;
 
 @Singleton
 public class TasksDAO {
-    private static final Map<String, Task> tasks = new HashMap<>();
+    @Inject
+    private DatabaseConnectionProvider connectionProvider;
 
-    public Task save(CreateTaskRequest createTaskRequest) {
+    @Inject
+    private HashIdGenerator hashIdGenerator;
+
+    public String save(CreateTaskRequest createTaskRequest) {
         final var id = generateId();
+        final var dueDate = parseDueDate(createTaskRequest.dueDate());
+        try (final var connection = connectionProvider.getConnection()) {
+            final var context = DSL.using(connection, SQLDialect.POSTGRES);
+            final var listId = getListId(createTaskRequest, context);
+            final var tags = getTags(createTaskRequest, context);
 
-        final var task = new Task(id,
-                createTaskRequest.title(),
-                createTaskRequest.description(),
-                createTaskRequest.tags(),
-                createTaskRequest.list(),
-                parseDueDate(createTaskRequest.dueDate()),
-                createTaskRequest.finished());
+            context.transaction((ctx) -> {
+                ctx.dsl().insertInto(TASKS)
+                        .set(TASKS.ID, id)
+                        .set(TASKS.TITLE, createTaskRequest.title())
+                        .set(TASKS.DESCRIPTION, createTaskRequest.description())
+                        .set(TASKS.DUE_DATE, dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
+                        .set(TASKS.LIST_ID, listId)
+                        .set(TASKS.FINISHED, false)
+                        .execute();
+                for (var tag : tags) {
+                    ctx.dsl().insertInto(TASKS_TAGS)
+                            .set(TASKS_TAGS.TASK_ID, id)
+                            .set(TASKS_TAGS.TAG_ID, tag)
+                            .execute();
+                }
+            });
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return id;
+    }
 
-        tasks.put(id, task);
+    private List<String> getTags(CreateTaskRequest createTaskRequest, DSLContext context) {
+        if (CollectionUtils.isEmpty(createTaskRequest.tags())) {
+            return Collections.emptyList();
+        } else {
+            return context.select(TAGS.ID).from(TAGS)
+                    .where(TAGS.NAME.in(createTaskRequest.tags()))
+                    .fetch()
+                    .stream()
+                    .map(Record1::value1)
+                    .toList();
+        }
+    }
 
-        return task;
+    private String getListId(CreateTaskRequest createTaskRequest, DSLContext context) {
+        return Optional.ofNullable(createTaskRequest.list()).map(listName ->
+                        Objects.requireNonNull(context.select(TASKS_LISTS.ID)
+                                .from(TASKS_LISTS)
+                                .where(TASKS_LISTS.NAME.eq(listName))
+                                .fetchOne()).value1())
+                .orElse(null);
     }
 
     public Collection<Task> findAll() {
-        return tasks.values();
-    }
-
-    public Optional<Task> findById(String id) {
-        return Optional.ofNullable(tasks.get(id));
+        try (final var connection = connectionProvider.getConnection()) {
+            final var context = DSL.using(connection, SQLDialect.POSTGRES);
+            return context.select().from(TASKS_VIEW).fetch()
+                    .stream()
+                    .map(record -> {
+                        final var tags = context.selectFrom(TAGS)
+                                .where(TAGS.ID.in(record.getValue(TASKS_VIEW.TAGS)))
+                                .fetchInto(Tag.class);
+                        return new Task(
+                                record.getValue(TASKS_VIEW.ID),
+                                record.getValue(TASKS_VIEW.TITLE),
+                                record.getValue(TASKS_VIEW.DESCRIPTION),
+                                tags,
+                                record.getValue(TASKS_VIEW.LISTNAME),
+                                record.getValue(TASKS_VIEW.DUE_DATE),
+                                record.getValue(TASKS_VIEW.FINISHED));
+                    }).toList();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String generateId() {
-        return UUID.randomUUID().toString();
+        return hashIdGenerator.generateHashId();
     }
 
     private Date parseDueDate(String dueDate) {
@@ -55,49 +122,8 @@ public class TasksDAO {
         try {
             return format.parse(dueDate);
         } catch (ParseException e) {
-            return null;
+            throw new IllegalArgumentException("Could not parse due date: " + dueDate);
         }
     }
 
-    public Set<String> getAllLists() {
-        return tasks.values().stream().map(Task::list).filter(Objects::nonNull).collect(Collectors.toSet());
-    }
-
-    public Set<String> getAllTags() {
-        return tasks.values().stream()
-                .flatMap(task -> task.tags().stream())
-                .collect(Collectors.toSet());
-    }
-
-    public List<Task> getTodayTasks() {
-        return tasks.values()
-                .stream()
-                .filter(task -> isToday(task.dueDate()))
-                .toList();
-    }
-
-
-    public boolean isSameDay(Date date1, Date date2) {
-        if (date1 == null || date2 == null) {
-            throw new IllegalArgumentException("The dates must not be null");
-        }
-        Calendar cal1 = Calendar.getInstance();
-        cal1.setTime(date1);
-        Calendar cal2 = Calendar.getInstance();
-        cal2.setTime(date2);
-        return isSameDay(cal1, cal2);
-    }
-
-    private boolean isSameDay(Calendar cal1, Calendar cal2) {
-        if (cal1 == null || cal2 == null) {
-            throw new IllegalArgumentException("The dates must not be null");
-        }
-        return (cal1.get(Calendar.ERA) == cal2.get(Calendar.ERA) &&
-                cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR));
-    }
-
-    private boolean isToday(Date date) {
-        return isSameDay(date, Calendar.getInstance().getTime());
-    }
 }

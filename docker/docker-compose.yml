@@ -1,0 +1,14 @@
+version: '3.9'
+
+services:
+  todo-list-database:
+    image: postgres:16.2-alpine3.19
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: todo_list
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./assets:/docker-entrypoint-initdb.d
+    container_name: todo-list-database
