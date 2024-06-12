@@ -6,47 +6,51 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import jakarta.inject.Inject;
-import pl.greywarden.tutorial.domain.dao.TasksDAO;
 import pl.greywarden.tutorial.domain.dto.CreateTaskRequest;
+import pl.greywarden.tutorial.domain.dto.Tag;
 import pl.greywarden.tutorial.domain.dto.Task;
+import pl.greywarden.tutorial.domain.dto.TasksList;
 import pl.greywarden.tutorial.service.TasksService;
 
-import java.net.URI;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 @Controller("/tasks")
 public class TasksResource {
     @Inject
-    private TasksDAO tasksDAO;
-    @Inject
     private TasksService tasksService;
 
     @Get
-    Collection<Task> getAllTasks() {
+    List<Task> getAllTasks() {
         return tasksService.getAllTasks();
+    }
+
+    @Get("/{id}")
+    Task getTaskById(String id) {
+        return tasksService.getTaskById(id);
+    }
+
+    @Get("/{id}/tags")
+    List<Tag> getTaskTags(String id) {
+        return tasksService.getTaskTags(id);
+    }
+
+    @Get("/{id}/list")
+    TasksList getTaskList(String id) {
+        return tasksService.getTaskList(id);
     }
 
     @Get("/today")
     List<Task> getTodayTasks() {
-        return Collections.emptyList();
+        return tasksService.getTodayTasks();
     }
 
-    @Get("/lists")
-    Set<String> getAllLists() {
-        return Collections.emptySet();
-    }
-
-    @Get("/tags")
-    Set<String> getAllTags() {
-        return Collections.emptySet();
+    @Get("/upcoming")
+    List<Task> getUpcomingTasks() {
+        return tasksService.getUpcomingTasks();
     }
 
     @Post
-    HttpResponse<Void> createTask(@Body CreateTaskRequest createTaskRequest) {
-        final var taskId = tasksDAO.save(createTaskRequest);
-        return HttpResponse.created(URI.create("/tasks/" + taskId));
+    HttpResponse<Task> createTask(@Body CreateTaskRequest createTaskRequest) {
+        return HttpResponse.created(tasksService.createTask(createTaskRequest));
     }
 }

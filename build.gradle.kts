@@ -19,8 +19,8 @@ dependencies {
     postgresDriver()
 
     implementation("commons-codec:commons-codec:1.17.0")
-    implementation("org.jooq:jooq:3.19.9")
-    runtimeOnly("ch.qos.logback:logback-classic")
+    //implementation("org.jooq:jooq:3.19.9")
+    implementation("org.jetbrains:annotations:24.1.0")
 }
 
 
@@ -79,6 +79,8 @@ jooq {
                     }
                     generate.apply {
                         isDeprecated = false
+                        isRecords = true
+                        isPojos = true
                     }
                     target.apply {
                         packageName = "pl.greywarden.tutorial.jooq"
@@ -92,9 +94,8 @@ jooq {
 
 
 fun DependencyHandlerScope.postgresDriver() {
-    val postgres = "org.postgresql:postgresql:42.7.3"
-    implementation(postgres)
-    jooqGenerator(postgres)
+    runtimeOnly("org.postgresql:postgresql")
+    jooqGenerator("org.postgresql:postgresql:42.7.3")
 }
 
 fun DependencyHandlerScope.micronaut() {
@@ -102,6 +103,15 @@ fun DependencyHandlerScope.micronaut() {
     annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.groovy:micronaut-runtime-groovy")
+
+    implementation("io.micronaut.sql:micronaut-jooq")
+    implementation("io.micronaut.data:micronaut-data-jdbc")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
     compileOnly("io.micronaut:micronaut-http-client")
+
+    runtimeOnly("ch.qos.logback:logback-classic")
+
     testImplementation("io.micronaut:micronaut-http-client")
 }

@@ -38,7 +38,7 @@ SELECT task.id,
        task.DESCRIPTION,
        task.DUE_DATE,
        task.FINISHED,
-       tasksLists.NAME                                                       AS listName,
+       tasksLists.ID                                                       AS listId,
        ARRAY(SELECT tt.TAG_ID FROM TASKS_TAGS tt WHERE tt.TASK_ID = task.ID) AS tags
 FROM TASKS task
          LEFT JOIN TASKS_LISTS tasksLists ON task.LIST_ID = tasksLists.ID;
