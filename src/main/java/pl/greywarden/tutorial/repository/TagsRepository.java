@@ -11,6 +11,7 @@ import pl.greywarden.tutorial.service.HashIdGenerator;
 import java.util.List;
 
 import static pl.greywarden.tutorial.jooq.Tables.TAGS;
+import static pl.greywarden.tutorial.jooq.Tables.TASKS_TAGS;
 
 @Singleton
 public class TagsRepository {
@@ -48,5 +49,17 @@ public class TagsRepository {
                 .set(TAGS.COLOR, createTagRequest.color())
                 .returning()
                 .fetchOneInto(Tag.class);
+    }
+
+    @Connectable
+    public void deleteTag(String id) {
+        dsl.transaction(configuration -> {
+            dsl.deleteFrom(TASKS_TAGS)
+                    .where(TASKS_TAGS.TAG_ID.eq(id))
+                    .execute();
+            dsl.deleteFrom(TAGS)
+                    .where(TAGS.ID.eq(id))
+                    .execute();
+        });
     }
 }

@@ -3,6 +3,7 @@ package pl.greywarden.tutorial.resource;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Delete;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import jakarta.inject.Inject;
@@ -30,5 +31,11 @@ public class TagsResource {
     @Post
     HttpResponse<Tag> createTag(@Body CreateTagRequest createTagRequest) {
         return HttpResponse.created(tagsService.createTag(createTagRequest));
+    }
+
+    @Delete("/{id}")
+    HttpResponse<Void> deleteTag(String id) {
+        tagsService.deleteTag(id);
+        return HttpResponse.noContent();
     }
 }

@@ -24,4 +24,8 @@ public class TagsService {
     public Tag createTag(CreateTagRequest createTagRequest) {
         return tagsRepository.createTag(createTagRequest);
     }
+
+    public void deleteTag(String id) {
+        tagsRepository.deleteTag(id);
+    }
 }
