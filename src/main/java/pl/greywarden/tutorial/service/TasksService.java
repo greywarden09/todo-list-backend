@@ -4,7 +4,7 @@ import io.micronaut.data.connection.annotation.Connectable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.jooq.DSLContext;
-import pl.greywarden.tutorial.domain.dto.CreateTaskRequest;
+import pl.greywarden.tutorial.domain.dto.CreateOrUpdateTaskRequest;
 import pl.greywarden.tutorial.domain.dto.Tag;
 import pl.greywarden.tutorial.domain.dto.Task;
 import pl.greywarden.tutorial.domain.dto.TasksList;
@@ -39,8 +39,8 @@ public class TasksService {
         return tasksRepository.getTodayTasks();
     }
 
-    public Task createTask(CreateTaskRequest createTaskRequest) {
-        return tasksRepository.createTask(createTaskRequest);
+    public Task createTask(CreateOrUpdateTaskRequest createOrUpdateTaskRequest) {
+        return tasksRepository.createTask(createOrUpdateTaskRequest);
     }
 
     @Connectable
@@ -54,5 +54,13 @@ public class TasksService {
 
     public TasksList getTaskList(String id) {
         return tasksRepository.getTaskList(id);
+    }
+
+    public Task finishTask(String id) {
+        return tasksRepository.finishTask(id);
+    }
+
+    public Task unfinishTask(String id) {
+        return tasksRepository.unfinishTask(id);
     }
 }

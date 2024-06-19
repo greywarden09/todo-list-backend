@@ -3,10 +3,12 @@ package pl.greywarden.tutorial.resource;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
+import io.micronaut.http.annotation.Delete;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.http.annotation.Put;
 import jakarta.inject.Inject;
-import pl.greywarden.tutorial.domain.dto.CreateTaskRequest;
+import pl.greywarden.tutorial.domain.dto.CreateOrUpdateTaskRequest;
 import pl.greywarden.tutorial.domain.dto.Tag;
 import pl.greywarden.tutorial.domain.dto.Task;
 import pl.greywarden.tutorial.domain.dto.TasksList;
@@ -50,7 +52,17 @@ public class TasksResource {
     }
 
     @Post
-    HttpResponse<Task> createTask(@Body CreateTaskRequest createTaskRequest) {
-        return HttpResponse.created(tasksService.createTask(createTaskRequest));
+    HttpResponse<Task> createTask(@Body CreateOrUpdateTaskRequest createOrUpdateTaskRequest) {
+        return HttpResponse.created(tasksService.createTask(createOrUpdateTaskRequest));
+    }
+
+    @Put("/{id}/finished")
+    HttpResponse<Task> finishTask(String id) {
+        return HttpResponse.accepted().body(tasksService.finishTask(id));
+    }
+
+    @Delete("/{id}/finished")
+    HttpResponse<Task> unfinishTask(String id) {
+        return HttpResponse.accepted().body(tasksService.unfinishTask(id));
     }
 }
